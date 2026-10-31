@@ -21,12 +21,13 @@ def main():
         "--name", "BridgeDrop", "--noconfirm", "--clean", "--windowed",
         "--icon", str(ROOT / "assets" / "icon.png"),
         "--add-data", f"{ROOT / 'index.html'}:.",
+        "--add-data", f"{ROOT / 'assets'}:assets",
         "--distpath", str(dist), "--workpath", str(ROOT / "build"), "--specpath", str(ROOT / "build"),
     ]
     if bridgedrop.IS_WINDOWS:
         command += ["--add-data", f"{ROOT / 'direct_link.ps1'}:."]
     if bridgedrop.IS_MAC:
-        command += ["--osx-bundle-identifier", "com.nobucreator.bridgedrop"]
+        command += ["--osx-bundle-identifier", "app.bridgedrop.desktop"]
     subprocess.run(command, check=True, cwd=ROOT)
 
     archive = dist / f"BridgeDrop-{bridgedrop.__version__}-{SYSTEM}"

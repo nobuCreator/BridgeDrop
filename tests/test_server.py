@@ -86,6 +86,13 @@ class ServerTest(unittest.TestCase):
         self.request("GET", "/api/pairing")
         self.assertLess(time.monotonic() - started, 5)
 
+    def test_icons_need_no_token_and_reveal_nothing_else(self):
+        for path in ("/icon-32.png", "/apple-touch-icon.png"):
+            status, data = self.request("GET", path, authorize=False)
+            self.assertEqual(status, 200)
+            self.assertTrue(data.startswith(b"\x89PNG"))
+        self.assertEqual(self.request("GET", "/assets/icon.png", authorize=False)[0], 401)
+
     def test_reports_version(self):
         self.assertEqual(self.state()["version"], bridgedrop.__version__)
         status, page = self.request("GET", "/")

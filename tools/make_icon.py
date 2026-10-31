@@ -1,53 +1,89 @@
-"""Draws the app icon. Needs Pillow: python tools/make_icon.py writes assets/icon.png."""
+"""Draws the app icon: a bridge whose arch is also a two-way arrow, so one shape says both "bridge" and "exchange".
+
+Kept to that single shape inside a 680px safe zone so it survives at 29px. It hints at the supported systems through
+colour only, because their logos are trademarks. Needs Pillow: python tools/make_icon.py writes:
+  assets/icon.png        rounded, for the desktop apps
+  assets/icon-touch.png  square and opaque, since phones round home screen icons themselves
+  assets/icon-32.png     for browser tabs
+"""
+import math
 import pathlib
 
 from PIL import Image, ImageDraw
 
 SIZE = 1024
-SCALE = 2
+SCALE = 3
 canvas = SIZE * SCALE
+WHITE = (255, 255, 255, 255)
+# Both ends keep white artwork above the 4.5:1 contrast the icon is checked against.
+BLUE, TEAL = (0, 90, 190), (0, 122, 122)
+ASSETS = pathlib.Path(__file__).resolve().parent.parent / "assets"
 
 
-def lerp(a, b, t):
-    return tuple(round(x + (y - x) * t) for x, y in zip(a, b))
+def s(value):
+    return round(value * SCALE)
 
 
-gradient = Image.new("RGB", (canvas, canvas))
-top, bottom = (56, 168, 248), (10, 92, 186)
-for y in range(canvas):
-    gradient.paste(lerp(top, bottom, y / canvas), (0, y, canvas, y + 1))
-
-margin, radius = 90 * SCALE, 210 * SCALE
-mask = Image.new("L", (canvas, canvas), 0)
-ImageDraw.Draw(mask).rounded_rectangle((margin, margin, canvas - margin, canvas - margin), radius, fill=255)
-icon = Image.new("RGBA", (canvas, canvas), (0, 0, 0, 0))
-icon.paste(gradient, mask=mask)
-
-# A soft sheen across the top half, for the same glass feel as the app.
-sheen = Image.new("RGBA", (canvas, canvas), (0, 0, 0, 0))
-sheen_mask = Image.new("L", (canvas, canvas), 0)
-for y in range(margin, canvas // 2):
-    sheen_mask.paste(round(46 * (1 - (y - margin) / (canvas // 2 - margin))), (0, y, canvas, y + 1))
-sheen.paste((255, 255, 255, 255), mask=sheen_mask)
-icon = Image.composite(Image.alpha_composite(icon, sheen), icon, mask)
-
-draw = ImageDraw.Draw(icon)
-stroke = 74 * SCALE
-white = (255, 255, 255, 255)
+def background():
+    small = Image.new("RGB", (256, 256))
+    pixels = small.load()
+    for y in range(256):
+        for x in range(256):
+            t = (x + y) / 510
+            pixels[x, y] = tuple(round(a + (b - a) * t) for a, b in zip(BLUE, TEAL))
+    return small.resize((canvas, canvas), Image.BICUBIC).convert("RGBA")
 
 
-def line(points):
-    draw.line(points, fill=white, width=stroke, joint="curve")
+def artwork():
+    art = Image.new("RGBA", (canvas, canvas), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(art)
+    centre, half_span, deck_y, crown_y = 512, 262, 700, 250
+    weight = 92
+
+    # The arch, stopping short of the deck to leave room for an arrowhead at each end.
+    points = []
+    for i in range(121):
+        t = i / 120
+        # A half ellipse: it meets the arrowheads vertically and keeps a broad, round crown like a real arch.
+        x = centre - half_span * math.cos(math.pi * t)
+        y = deck_y - 140 - (deck_y - 140 - crown_y) * math.sin(math.pi * t)
+        points.append((x, y))
+    draw.line([(s(x), s(y)) for x, y in points], fill=WHITE, width=s(weight), joint="curve")
     for x, y in (points[0], points[-1]):
-        draw.ellipse((x - stroke / 2, y - stroke / 2, x + stroke / 2, y + stroke / 2), fill=white)
+        r = weight / 2
+        draw.ellipse((s(x - r), s(y - r), s(x + r), s(y + r)), fill=WHITE)
+
+    # Arrowheads pointing down onto the deck at both ends: data crossing each way.
+    for x in (centre - half_span, centre + half_span):
+        draw.polygon([(s(x - 92), s(deck_y - 150)), (s(x + 92), s(deck_y - 150)), (s(x), s(deck_y - 34))], fill=WHITE)
+
+    # The deck.
+    draw.rounded_rectangle((s(centre - 340), s(deck_y), s(centre + 340), s(deck_y + 74)), s(37), fill=WHITE)
+    return art
 
 
-c = canvas // 2
-line([(c, 270 * SCALE), (c, 610 * SCALE)])
-line([(c - 170 * SCALE, 450 * SCALE), (c, 620 * SCALE), (c + 170 * SCALE, 450 * SCALE)])
-line([(c - 270 * SCALE, 640 * SCALE), (c - 270 * SCALE, 730 * SCALE), (c + 270 * SCALE, 730 * SCALE), (c + 270 * SCALE, 640 * SCALE)])
+def main():
+    ASSETS.mkdir(exist_ok=True)
+    full = Image.alpha_composite(background(), artwork())
 
-out = pathlib.Path(__file__).resolve().parent.parent / "assets" / "icon.png"
-out.parent.mkdir(exist_ok=True)
-icon.resize((SIZE, SIZE), Image.LANCZOS).save(out)
-print(out)
+    mask = Image.new("L", (canvas, canvas), 0)
+    ImageDraw.Draw(mask).rounded_rectangle((s(40), s(40), s(984), s(984)), s(210), fill=255)
+    rounded = Image.new("RGBA", (canvas, canvas), (0, 0, 0, 0))
+    rounded.paste(full, mask=mask)
+
+    rounded.resize((SIZE, SIZE), Image.LANCZOS).save(ASSETS / "icon.png")
+    rounded.resize((32, 32), Image.LANCZOS).save(ASSETS / "icon-32.png")
+    full.convert("RGB").resize((180, 180), Image.LANCZOS).save(ASSETS / "icon-touch.png")
+
+    # White artwork against both ends of the gradient, by the WCAG formula.
+    def luminance(colour):
+        channels = [c / 255 for c in colour]
+        linear = [c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4 for c in channels]
+        return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2]
+
+    for name, colour in (("blue", BLUE), ("teal", TEAL)):
+        print(f"contrast on {name}: {1.05 / (luminance(colour) + 0.05):.1f}:1")
+
+
+if __name__ == "__main__":
+    main()

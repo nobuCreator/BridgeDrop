@@ -49,6 +49,7 @@ ITEM_TTL_SECONDS = 24 * 60 * 60
 FREE_SPACE_MARGIN = 100 * 1024 * 1024
 PROBE_HOST = "captive.apple.com"
 PORTAL_SUCCESS = b"<HTML><HEAD><TITLE>Success</TITLE></HEAD><BODY>Success</BODY></HTML>"
+PUBLIC_ICONS = {"/icon-32.png": "icon-32.png", "/apple-touch-icon.png": "icon-touch.png"}
 PORTAL_PASS_SECONDS = 30
 SAFARI_HOLD_SECONDS = 15 * 60
 PRESENCE_TIMEOUT_SECONDS = 10
@@ -380,6 +381,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.parse()
         if self.route == "/healthz":
             return self.send_body(200, b"bridgedrop", "text/plain")
+        if self.route in PUBLIC_ICONS:
+            # Open without the token: phones fetch these on their own when adding the page to the home screen.
+            return self.send_body(200, (APP_DIR / "assets" / PUBLIC_ICONS[self.route]).read_bytes(), "image/png")
         if not self.authorized():
             if self.route == "/":
                 message = "PCのBridgeDrop画面に表示されたQRコードを読み取って開き直してください。"
