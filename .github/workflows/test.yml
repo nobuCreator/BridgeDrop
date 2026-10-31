@@ -1,0 +1,42 @@
+name: test
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Platform branches
+        run: python tests/test_platform.py
+      - name: Server end to end
+        run: python tests/test_server.py
+
+  # The screens as they look on a real Mac, downloadable from the run's page.
+  mac-screens:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install browsers
+        run: |
+          pip install playwright==1.48.0
+          playwright install chromium webkit
+      - name: Capture screens
+        run: python tests/screenshots.py mac-screens chromium webkit
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mac-screens
+          path: mac-screens

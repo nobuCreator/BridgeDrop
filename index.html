@@ -1,0 +1,1162 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="BridgeDrop">
+<meta name="theme-color" content="#dbe7f3" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0a0e18" media="(prefers-color-scheme: dark)">
+<title>BridgeDrop</title>
+<style>
+:root {
+  --base: #dbe7f3; --glow-1: 143 208 255; --glow-2: 168 236 220; --glow-3: 244 217 200; --glow-4: 185 200 255;
+  --bar-tint: rgba(255, 255, 255, .8);
+  --label: #10141c; --secondary: rgba(25, 32, 48, .72); --separator: rgba(40, 50, 75, .16);
+  --glass-tint: rgba(255, 255, 255, .46); --glass-rim: rgba(255, 255, 255, .85); --glass-rim-low: rgba(255, 255, 255, .28);
+  --glass-shadow: 0 10px 34px rgba(30, 55, 95, .16), 0 1px 3px rgba(30, 55, 95, .1);
+  --plain: rgba(255, 255, 255, .58); --fill: rgba(60, 70, 95, .1);
+  --tint: #0a66c2; --tint-soft: rgba(10, 102, 194, .13); --on-tint: #ffffff; --red: #c9001a; --green: #1a7f37;
+  --spring: cubic-bezier(.3, 1.45, .45, 1);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --base: #0a0e18; --glow-1: 23 71 124; --glow-2: 14 90 88; --glow-3: 87 50 74; --glow-4: 44 47 120;
+    --bar-tint: rgba(38, 42, 54, .82);
+    --label: #ffffff; --secondary: rgba(235, 240, 250, .74); --separator: rgba(220, 230, 255, .16);
+    --glass-tint: rgba(38, 42, 54, .42); --glass-rim: rgba(255, 255, 255, .34); --glass-rim-low: rgba(255, 255, 255, .1);
+    --glass-shadow: 0 10px 34px rgba(0, 0, 0, .45);
+    --plain: rgba(32, 36, 46, .62); --fill: rgba(200, 210, 240, .14);
+    --tint: #5cb0ff; --tint-soft: rgba(92, 176, 255, .18); --on-tint: #03182e; --red: #ff7b72; --green: #4cd97b;
+  }
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { -webkit-text-size-adjust: 100%; background: var(--base); }
+body {
+  margin: 0; min-height: 100vh; color: var(--label); -webkit-font-smoothing: antialiased;
+  font: 16px/1.45 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Hiragino Sans", "Segoe UI Variable Text", "Yu Gothic UI", "Meiryo", sans-serif;
+  padding-bottom: max(40px, env(safe-area-inset-bottom));
+}
+/* Glass only reads as glass with colour behind it to bend. */
+body::before {
+  content: ""; position: fixed; inset: 0; z-index: -1; background:
+    radial-gradient(44% 34% at 12% 10%, rgb(var(--glow-1)), rgb(var(--glow-1) / 0) 72%),
+    radial-gradient(40% 32% at 92% 22%, rgb(var(--glow-3)), rgb(var(--glow-3) / 0) 72%),
+    radial-gradient(48% 36% at 80% 74%, rgb(var(--glow-2)), rgb(var(--glow-2) / 0) 72%),
+    radial-gradient(44% 36% at 10% 88%, rgb(var(--glow-4)), rgb(var(--glow-4) / 0) 72%),
+    var(--base);
+}
+main { max-width: 680px; margin: 0 auto; padding: 8px 14px 0; }
+
+.glass {
+  position: relative; background: var(--glass-tint); border-radius: 24px; isolation: isolate;
+  -webkit-backdrop-filter: blur(16px) saturate(175%); backdrop-filter: blur(16px) saturate(175%);
+  box-shadow: inset 0 1px 0 var(--glass-rim), inset 0 -1px 0 var(--glass-rim-low), inset 1px 0 0 var(--glass-rim-low), inset -1px 0 0 var(--glass-rim-low), var(--glass-shadow);
+}
+
+button, .btn {
+  font: inherit; font-size: 15px; font-weight: 500; color: var(--tint); background: var(--tint-soft); border: 0;
+  border-radius: 999px; padding: 7px 15px; min-height: 36px; cursor: pointer; text-decoration: none;
+  display: inline-flex; align-items: center; justify-content: center; white-space: nowrap;
+  transition: transform .32s var(--spring), background-color .2s, color .2s;
+}
+button:hover:not(:disabled), .btn:hover { transform: scale(1.035); }
+button:active:not(:disabled), .btn:active { transform: scale(1.06, .92); transition-duration: .08s; }
+button:focus-visible, .btn:focus-visible, select:focus-visible, summary:focus-visible, #file:focus-visible ~ #drop-title {
+  outline: 3px solid var(--tint); outline-offset: 2px;
+}
+button.primary { background: var(--tint); color: var(--on-tint); font-weight: 600; }
+button:disabled { opacity: .4; cursor: default; }
+button.danger { color: var(--red); background: none; padding-inline: 8px; }
+
+header.glass {
+  position: sticky; top: max(8px, env(safe-area-inset-top)); z-index: 10; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 7px 8px 7px 20px; border-radius: 999px;
+}
+h1 { font-size: 19px; font-weight: 700; line-height: 1.2; letter-spacing: -.01em; margin: 0; }
+#header-actions { display: flex; align-items: center; gap: 2px; min-width: 0; }
+#header-actions button { background: none; font-weight: 500; padding-inline: 11px; }
+#me { color: var(--secondary); min-width: 0; overflow: hidden; }
+#me span { overflow: hidden; text-overflow: ellipsis; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--secondary); display: inline-block; margin-right: 6px; flex: none; }
+.dot.on { background: var(--green); }
+
+#sheet-notice { margin: 10px 0 0; padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--label); font-size: 14px; }
+
+body.yielded main > :not(#sheet-notice) { display: none; }
+body.yielded #sheet-notice { margin-top: 24px; padding: 24px; font-size: 17px; font-weight: 600; text-align: center; justify-content: center; }
+
+#pair { margin-top: 10px; }
+#pair summary { cursor: pointer; padding: 12px 18px; min-height: 44px; font-weight: 500; }
+#pair[open] summary { padding-bottom: 8px; }
+#pair-tabs {
+  position: relative; display: grid; grid-template-columns: 1fr 1fr; margin: 0 16px 14px; padding: 3px; background: var(--fill); border-radius: 999px;
+}
+/* One thumb that glides and stretches between the two options instead of two separate highlights. */
+#pair-tabs::before {
+  content: ""; position: absolute; top: 3px; bottom: 3px; left: 3px; width: calc(50% - 3px); border-radius: 999px; background: var(--glass-tint);
+  box-shadow: inset 0 1px 0 var(--glass-rim), 0 2px 8px rgba(20, 40, 80, .18); transition: transform .42s var(--spring);
+}
+#pair-tabs[data-active="lan"]::before { transform: translateX(100%); }
+#pair-tabs button { position: relative; background: none; color: var(--label); padding: 4px 8px; min-height: 32px; font-size: 14px; }
+#pair-tabs button:hover:not(:disabled), #pair-tabs button:active:not(:disabled) { transform: none; }
+#pair-tabs button[aria-selected="true"] { font-weight: 600; }
+.pair-panel { padding: 0 18px 18px; }
+#pair-body { display: flex; gap: 16px; align-items: center; }
+#qr, .direct-qr { width: 156px; flex: none; max-width: 100%; padding: 6px; background: #fff; border-radius: 16px; line-height: 0; }
+#qr svg, .direct-qr svg { width: 100%; height: auto; display: block; }
+#pair ol { margin: 0; padding-left: 18px; font-size: 14px; }
+#pair li { margin-bottom: 4px; }
+#pair-url { font-size: 12px; color: var(--secondary); word-break: break-all; margin: 6px 0 0; }
+#ip-select { font: inherit; font-size: 14px; margin-top: 6px; max-width: 100%; }
+.direct-steps { display: block; margin-bottom: 10px; }
+.direct-steps strong { display: block; font-size: 15px; font-weight: 600; margin-bottom: 8px; }
+#direct .hint { margin-bottom: 12px; }
+.direct-cred { font-size: 13px; color: var(--secondary); margin: 10px 0 0; overflow-wrap: anywhere; }
+.direct-cred code { color: var(--label); font-size: 13px; font-family: ui-monospace, "SF Mono", Consolas, monospace; }
+.direct-error { color: var(--red); font-size: 14px; margin: 0 0 10px; }
+.direct-buttons { display: flex; flex-wrap: wrap; gap: 8px; }
+.direct-note { margin: 12px 0 0 !important; font-size: 13px; }
+
+#drop {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;
+  min-height: 248px; margin-top: 10px; padding: 28px 20px; overflow: hidden; cursor: pointer; border-radius: 32px;
+  transition: transform .5s var(--spring), border-radius .5s var(--spring), background-color .25s;
+}
+#drop.over { transform: scale(1.022); border-radius: 44px; background: var(--tint-soft); }
+#drop.waiting { cursor: default; min-height: 140px; }
+#drop.waiting svg { display: none; }
+#drop.waiting #drop-title { font-size: 18px; font-weight: 600; }
+#drop.waiting #drop-sub { font-size: 14px; }
+#drop.landed { animation: landed .68s var(--spring); }
+@keyframes landed {
+  0% { transform: scale(1.022); border-radius: 44px; }
+  24% { transform: scale(1.03, .955); border-radius: 56px; }
+  52% { transform: scale(.985, 1.018); border-radius: 26px; }
+  76% { transform: scale(1.005, .996); border-radius: 34px; }
+  100% { transform: scale(1); border-radius: 32px; }
+}
+#file { position: absolute; width: 1px; height: 1px; opacity: 0; }
+#drop svg { width: 46px; height: 46px; margin-bottom: 12px; fill: none; stroke: var(--tint); stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; transition: transform .5s var(--spring); }
+#drop.over svg { transform: translateY(5px) scale(1.1); }
+#drop-title { font-size: clamp(22px, 5vw, 28px); font-weight: 700; line-height: 1.2; letter-spacing: -.005em; }
+#drop-sub { margin-top: 6px; font-size: 15px; color: var(--secondary); }
+
+.group-title, .section-title { font-size: 13px; font-weight: 500; color: var(--secondary); margin: 20px 18px 7px; }
+#send-bar { padding: 4px 16px; }
+#targets { display: flex; flex-wrap: wrap; gap: 8px; padding: 10px 0; border-bottom: 1px solid var(--separator); }
+.target { background: var(--fill); color: var(--label); font-weight: 400; max-width: 100%; }
+.target span.label { overflow: hidden; text-overflow: ellipsis; }
+.target[aria-pressed="true"] { background: var(--tint); color: var(--on-tint); font-weight: 600; }
+.target[aria-pressed="true"] .dot { background: var(--on-tint); }
+.hint { color: var(--secondary); font-size: 14px; margin: 0; }
+#targets .hint { min-height: 36px; display: flex; align-items: center; }
+#text-row { display: flex; align-items: flex-end; gap: 10px; padding: 8px 0; }
+textarea {
+  flex: 1; min-width: 0; font: inherit; color: var(--label); background: none; border: 0;
+  padding: 7px 0; resize: none; min-height: 36px; display: block;
+}
+textarea:focus, textarea:focus-visible { outline: none; }
+textarea::placeholder { color: var(--secondary); }
+
+#history-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-right: 6px; }
+#history-head .section-title { flex: 1; }
+#select-toggle { background: none; margin-top: 12px; }
+.pick {
+  display: none; appearance: none; -webkit-appearance: none; flex: none; width: 24px; height: 24px; margin: 10px 0 0; border-radius: 50%; cursor: pointer;
+  border: 1.5px solid var(--secondary); background: center / 15px no-repeat; transition: transform .3s var(--spring), background-color .15s;
+}
+.pick:checked {
+  border-color: var(--tint); background-color: var(--tint); transform: scale(1.08);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='white' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 8.500l3.300 3.300L13 5'/%3E%3C/svg%3E");
+}
+.pick:focus-visible { outline: 3px solid var(--tint); outline-offset: 2px; }
+#items.selecting .row { grid-template-columns: 24px 44px 1fr; cursor: pointer; }
+#items.selecting .pick { display: block; }
+#items.selecting .actions { display: none; }
+#items.selecting .text-body { pointer-events: none; }
+#items.selecting .row + .row::before { left: 108px; }
+#items.selecting .row.picked { background: var(--tint-soft); }
+#select-bar {
+  position: fixed; left: 50%; bottom: max(14px, env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 15;
+  display: flex; align-items: center; gap: 6px; padding: 7px 8px; border-radius: 999px; max-width: calc(100vw - 20px); white-space: nowrap;
+  background: var(--bar-tint);
+  animation: bar-in .45s var(--spring);
+}
+@keyframes bar-in { from { opacity: 0; transform: translateX(-50%) translateY(18px) scale(.92); } }
+#select-bar button, #select-bar .btn { padding-inline: 12px; }
+#select-all { background: none; font-weight: 500; }
+#select-count { font-size: 13px; color: var(--secondary); min-width: 34px; text-align: center; font-variant-numeric: tabular-nums; }
+#bulk-save[aria-disabled="true"], #bulk-delete:disabled { opacity: .4; pointer-events: none; }
+body.selecting { padding-bottom: 92px; }
+body.selecting #toast { bottom: 76px; }
+
+#items, #uploads, #empty { background: var(--plain); border-radius: 22px; overflow: hidden; }
+.row { position: relative; padding: 12px 16px; display: grid; grid-template-columns: 44px 1fr; gap: 12px; align-items: start; }
+.row + .row::before { content: ""; position: absolute; top: 0; left: 72px; right: 0; border-top: 1px solid var(--separator); }
+.thumb {
+  width: 44px; height: 44px; object-fit: cover; border-radius: 12px; background: var(--fill); color: var(--secondary);
+  display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 600; overflow: hidden;
+}
+.body { min-width: 0; }
+.name { font-weight: 500; overflow-wrap: anywhere; }
+.meta { font-size: 13px; color: var(--secondary); overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.status-ok { color: var(--green); }
+.actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 8px; }
+.text-body { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 220px; overflow-y: auto; }
+.text-body a { color: var(--tint); }
+progress { width: 100%; height: 4px; margin-top: 8px; accent-color: var(--tint); display: block; }
+#empty { padding: 14px 16px; }
+
+#toast {
+  position: fixed; left: 50%; bottom: max(24px, env(safe-area-inset-bottom)); transform: translateX(-50%) translateY(10px) scale(.94); z-index: 30;
+  background: var(--glass-tint); color: var(--label); padding: 10px 18px; font-size: 14px; font-weight: 500; border-radius: 999px;
+  -webkit-backdrop-filter: blur(16px) saturate(175%); backdrop-filter: blur(16px) saturate(175%);
+  box-shadow: inset 0 1px 0 var(--glass-rim), var(--glass-shadow);
+  max-width: calc(100vw - 32px); opacity: 0; pointer-events: none; transition: opacity .2s, transform .42s var(--spring);
+}
+#toast.show { opacity: 1; transform: translateX(-50%); }
+#lens-defs { position: absolute; width: 0; height: 0; }
+
+#quit-dialog.glass {
+  position: fixed; inset: 0; margin: auto; width: min(340px, calc(100vw - 40px)); height: fit-content; padding: 22px 20px 16px;
+  border: 0; border-radius: 28px; color: var(--label); text-align: center; overflow: hidden; background: var(--bar-tint);
+}
+#quit-dialog[open] { animation: panel-in .42s var(--spring); }
+#quit-dialog::backdrop { background: rgba(12, 20, 35, .28); animation: fade-in .2s ease-out; }
+@keyframes panel-in { from { opacity: 0; transform: scale(.88); } }
+@keyframes fade-in { from { opacity: 0; } }
+#quit-dialog h2, #ended h2 { margin: 0; font-size: 18px; font-weight: 700; line-height: 1.35; }
+#quit-dialog p, #ended p { margin: 7px 0 0; font-size: 14px; color: var(--secondary); }
+#quit-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 18px; }
+#quit-buttons button { min-height: 44px; }
+#quit-cancel { background: var(--fill); color: var(--label); }
+#quit-confirm { background: var(--red); color: #fff; font-weight: 600; }
+@media (prefers-color-scheme: dark) { #quit-confirm { color: #2b0300; } }
+
+body.ended main { display: none; }
+#ended.glass {
+  position: fixed; inset: 0; margin: auto; width: min(360px, calc(100vw - 40px)); height: fit-content; padding: 30px 24px;
+  border-radius: 28px; text-align: center; animation: panel-in .42s var(--spring);
+}
+@media (max-width: 480px) {
+  #drop { min-height: 208px; }
+  #pair-body { flex-direction: column; align-items: flex-start; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: .01ms !important; animation: none !important; }
+}
+/* Respects the system setting for people who need solid surfaces to read comfortably. */
+@media (prefers-reduced-transparency: reduce) {
+  .glass, #toast { -webkit-backdrop-filter: none; backdrop-filter: none !important; background: var(--base); }
+  #items, #uploads, #empty { background: var(--base); }
+}
+</style>
+</head>
+<body>
+<main>
+  <header class="glass">
+    <h1>BridgeDrop</h1>
+    <div id="header-actions">
+      <button id="me" type="button" title="この端末の名前"><i class="dot" id="conn"></i><span id="me-name"></span></button>
+      <button id="quit" type="button" hidden>終了</button>
+    </div>
+  </header>
+
+  <p class="hint glass" id="sheet-notice" hidden>
+    <span id="sheet-text">受信したファイルは「保存」を押すと、Safariが開いて保存できます。</span>
+    <a class="btn" id="open-safari">Safariで開く</a>
+  </p>
+
+  <details id="pair" class="glass" hidden>
+    <summary>端末をつなぐ</summary>
+    <div id="pair-tabs" role="tablist">
+      <button id="tab-direct" type="button" role="tab">ルーターなし</button>
+      <button id="tab-lan" type="button" role="tab">同じネットワーク</button>
+    </div>
+    <div id="direct" class="pair-panel" role="tabpanel">
+      <div id="direct-body"></div>
+    </div>
+    <div id="lan" class="pair-panel" role="tabpanel">
+      <div id="pair-body">
+        <div id="qr" role="img" aria-label="接続用QRコード"></div>
+        <div>
+          <ol>
+            <li>このパソコンと同じネットワークにつなぐ</li>
+            <li>カメラでQRコードを読み取る</li>
+            <li>ブラウザでこの画面が開けば接続完了</li>
+          </ol>
+          <select id="ip-select" hidden aria-label="接続に使うアドレス"></select>
+          <p id="pair-url"></p>
+        </div>
+      </div>
+    </div>
+  </details>
+
+  <label id="drop" class="glass">
+    <input type="file" id="file" multiple>
+    <svg viewBox="0 0 44 44" aria-hidden="true"><path d="M22 6v20"/><path d="M14 18.500l8 8 8-8"/><path d="M7 31v4a4 4 0 0 0 4 4h22a4 4 0 0 0 4-4v-4"/></svg>
+    <span id="drop-title">ここにドロップ</span>
+    <span id="drop-sub">写真・動画・書類など。複数選択できます</span>
+  </label>
+
+  <h2 class="group-title">送信先</h2>
+  <section id="send-bar" class="glass">
+    <div id="targets"></div>
+    <div id="text-row">
+      <textarea id="text" rows="1" placeholder="テキストやURLを送る" aria-label="送るテキスト"></textarea>
+      <button id="send-text" type="button" class="primary">送信</button>
+    </div>
+  </section>
+
+  <section id="uploads-card" hidden>
+    <h2 class="section-title">送信中</h2>
+    <div id="uploads"></div>
+  </section>
+
+  <section>
+    <div id="history-head">
+      <h2 class="section-title">履歴</h2>
+      <button id="select-toggle" type="button" hidden>選択</button>
+    </div>
+    <div id="items"></div>
+    <p class="hint" id="empty">まだ何もありません。</p>
+  </section>
+
+  <div id="select-bar" class="glass" hidden>
+    <button id="select-all" type="button">すべて選択</button>
+    <span id="select-count" aria-live="polite"></span>
+    <a class="btn" id="bulk-save">保存</a>
+    <button id="bulk-delete" type="button" class="danger">削除</button>
+  </div>
+</main>
+<dialog id="quit-dialog" class="glass" aria-labelledby="quit-title">
+  <h2 id="quit-title">BridgeDropを終了しますか？</h2>
+  <p id="quit-note"></p>
+  <div id="quit-buttons">
+    <button id="quit-cancel" type="button">キャンセル</button>
+    <button id="quit-confirm" type="button">終了</button>
+  </div>
+</dialog>
+<div id="ended" class="glass" role="status" hidden>
+  <h2>BridgeDropを終了しました</h2>
+  <p>このウィンドウは閉じてかまいません。</p>
+</div>
+<svg id="lens-defs" aria-hidden="true"></svg>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const store = {
+  get(key) { try { return localStorage.getItem(key); } catch { return null; } },
+  set(key, value) { try { localStorage.setItem(key, value); } catch {} },
+};
+
+function detectKind() {
+  const ua = navigator.userAgent;
+  if (/iPhone|iPod/.test(ua)) return "iphone";
+  if (/iPad/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)) return "ipad";
+  if (/Macintosh/.test(ua)) return "mac";
+  if (/Android/.test(ua)) return "android";
+  if (/Windows/.test(ua)) return "windows";
+  return "other";
+}
+const kind = detectKind();
+const READY_TEXT = kind === "windows" || kind === "mac"
+  ? { title: "ここにドロップ", sub: "ファイルをドラッグ＆ドロップ。クリックでも選べます" }
+  : { title: "ファイルを選ぶ", sub: "写真・動画・書類など。複数選択できます" };
+// The sheet iOS opens after joining a Wi-Fi network identifies itself by lacking "Safari" in its user agent.
+// It cannot download, but plain links leave it for Safari, which has no cookie yet and so needs the token.
+let inSheet = (kind === "iphone" || kind === "ipad") && !/Safari\//.test(navigator.userAgent) && !navigator.standalone;
+const pageToken = new URLSearchParams(location.search).get("t");
+
+let state = { me: null, devices: [], items: [] };
+let target = store.get("bd_target");
+let knownIncoming = null;
+const isPc = () => state.me === "pc";
+
+function api(path, params = {}) {
+  return path + "?" + new URLSearchParams(params);
+}
+
+function toast(message) {
+  const el = $("toast");
+  el.textContent = message;
+  el.classList.add("show");
+  clearTimeout(toast.timer);
+  toast.timer = setTimeout(() => el.classList.remove("show"), 3000);
+}
+
+function formatSize(bytes) {
+  if (bytes < 1024) return bytes + " B";
+  const units = ["KB", "MB", "GB", "TB"];
+  let value = bytes, unit = -1;
+  do { value /= 1024; unit++; } while (value >= 1024 && unit < units.length - 1);
+  return value.toFixed(value < 10 ? 1 : 0) + " " + units[unit];
+}
+
+function formatTime(seconds) {
+  const d = new Date(seconds * 1000);
+  return d.toLocaleString("ja-JP", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+
+function el(tag, props = {}, ...children) {
+  const node = document.createElement(tag);
+  Object.assign(node, props);
+  node.append(...children);
+  return node;
+}
+
+// Joining through the Camera app loads this sheet behind it, and iOS then shows it over Safari, where it is only in
+// the way. iOS offers a page no means of closing the sheet, so all it can do is say how. A sheet the person is using
+// stays as it is: following one of its links also opens Safari, and they may come back.
+let yielded = false;
+let leftThroughLink = false;
+document.addEventListener("click", (event) => {
+  if (event.target.closest("a")) leftThroughLink = true;
+}, true);
+function yieldToSafari() {
+  if (yielded || leftThroughLink) return;
+  yielded = true;
+  $("sheet-text").textContent = "Safariで開いています。右上の「完了」でこの画面を閉じてください。";
+  $("open-safari").hidden = true;
+  document.body.classList.add("yielded");
+}
+
+/* ---------- state sync ---------- */
+async function refresh() {
+  const response = await fetch(api("/api/state"));
+  if (!response.ok) return;
+  state = await response.json();
+  render();
+  if (inSheet && state.safariOpen) yieldToSafari();
+}
+
+let source = null;
+function connect() {
+  if (source) source.close();
+  const savedName = store.get("bd_name");
+  source = new EventSource(api("/api/events", savedName ? { name: savedName, kind } : { kind }));
+  source.onopen = () => $("conn").classList.add("on");
+  source.onmessage = () => refresh().catch(() => {});
+  source.onerror = () => $("conn").classList.remove("on");
+}
+
+const ping = () => fetch(api("/api/ping"), { method: "POST" }).catch(() => {});
+const leave = () => navigator.sendBeacon(api("/api/leave"));
+
+// iOS suspends background pages and their timers, so the other side sees this device leave
+// either from the beacon or, if that is lost, from the pings stopping.
+setInterval(() => {
+  if (document.hidden) return;
+  ping();
+  // Safari opening does not always notify this page, so the sheet looks for it itself.
+  if (inSheet) refresh().catch(() => {});
+}, 4000);
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) {
+    if (!isPc()) leave();
+    return;
+  }
+  // A connection suspended in the background can look open while being dead, so replace it.
+  if (!isPc()) connect();
+  ping();
+  refresh().catch(() => {});
+});
+window.addEventListener("pagehide", () => { if (!isPc()) leave(); });
+window.addEventListener("pageshow", (event) => {
+  // Coming back through the back-forward cache does not rerun the page's startup.
+  if (event.persisted && !isPc()) { connect(); ping(); }
+});
+
+/* ---------- rendering ---------- */
+function render() {
+  const me = state.devices.find((d) => d.id === state.me);
+  if (me) $("me-name").textContent = me.name;
+  $("quit").hidden = !isPc();
+  renderTargets();
+  renderItems();
+  renderPairing();
+  notifyIncoming();
+}
+
+function renderTargets() {
+  const others = state.devices.filter((d) => d.id !== state.me);
+  if (!others.some((d) => d.id === target)) {
+    const online = others.find((d) => d.online);
+    target = online ? online.id : others[0] ? others[0].id : null;
+  }
+  const box = $("targets");
+  box.replaceChildren();
+  for (const device of others) {
+    const button = el("button", { type: "button", className: "target" });
+    button.setAttribute("aria-pressed", String(device.id === target));
+    button.append(
+      el("i", { className: "dot" + (device.online ? " on" : "") }),
+      el("span", { className: "label", textContent: device.name })
+    );
+    button.onclick = () => { target = device.id; store.set("bd_target", target); render(); };
+    box.append(button);
+  }
+  if (!others.length) box.append(el("p", { className: "hint", textContent: "端末をつなぐと、ここに出ます。" }));
+  $("send-text").disabled = !target;
+  const ready = Boolean(target);
+  $("file").disabled = !ready;
+  $("drop").classList.toggle("waiting", !ready);
+  $("drop-title").textContent = ready ? READY_TEXT.title : "端末がつながっていません";
+  $("drop-sub").textContent = ready ? READY_TEXT.sub : "端末をつなぐと、ここからファイルを送れます";
+  if (ready) pump();
+}
+
+const REMOVE_MS = 380;
+const rendered = new Map();
+function renderItems() {
+  const box = $("items");
+  const wanted = [];
+  for (const item of state.items) {
+    const signature = JSON.stringify([item.taken, item.saved, item.name, item.fromName, item.toName]);
+    let entry = rendered.get(item.id);
+    if (!entry || entry.signature !== signature) {
+      entry = { signature, node: itemRow(item) };
+      rendered.set(item.id, entry);
+    }
+    wanted.push(entry.node);
+  }
+  for (const id of rendered.keys()) {
+    if (!state.items.some((item) => item.id === id)) rendered.delete(id);
+  }
+  box.replaceChildren(...wanted);
+  $("empty").hidden = wanted.length > 0;
+  syncSelection();
+}
+
+function thumbFor(item) {
+  const url = api("/file/" + item.id, { inline: 1 });
+  const label = (item.kind === "text" ? "TXT" : (item.name.split(".").pop() || "FILE")).slice(0, 4).toUpperCase();
+  const fallback = () => el("div", { className: "thumb", textContent: label });
+  if (item.kind === "file" && item.mime.startsWith("image/")) {
+    const img = el("img", { className: "thumb", src: url, alt: "", loading: "lazy" });
+    img.onerror = () => img.replaceWith(fallback());
+    return img;
+  }
+  return fallback();
+}
+
+function linkify(text) {
+  const out = document.createDocumentFragment();
+  let last = 0;
+  for (const match of text.matchAll(/https?:\/\/[^\s<>"']+/g)) {
+    out.append(text.slice(last, match.index));
+    out.append(el("a", { href: match[0], textContent: match[0], target: "_blank", rel: "noopener noreferrer" }));
+    last = match.index + match[0].length;
+  }
+  out.append(text.slice(last));
+  return out;
+}
+
+function copyText(text) {
+  // navigator.clipboard needs HTTPS, so on the LAN this falls back to execCommand.
+  const area = el("textarea", { value: text, readOnly: true });
+  area.style.position = "fixed";
+  area.style.opacity = "0";
+  document.body.append(area);
+  area.focus();
+  area.setSelectionRange(0, text.length);
+  let ok = false;
+  try { ok = document.execCommand("copy"); } catch {}
+  area.remove();
+  toast(ok ? "コピーしました" : "コピーできませんでした。文字を長押しして選択してください");
+}
+
+// The row gives under the press, then shrinks away so the rows below flow up into its place.
+async function removeRow(item, row, quiet = false) {
+  if (row.dataset.leaving) return false;
+  row.dataset.leaving = "true";
+  const style = getComputedStyle(row);
+  const open = { height: `${row.offsetHeight}px`, paddingTop: style.paddingTop, paddingBottom: style.paddingBottom };
+  const closed = { height: "0px", paddingTop: "0px", paddingBottom: "0px" };
+  row.style.overflow = "hidden";
+  row.style.pointerEvents = "none";
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const leaving = row.animate([
+    { ...open, transform: "scale(1)", opacity: 1, offset: 0 },
+    { ...open, transform: "scale(1.02, .94)", opacity: 1, offset: 0.2 },
+    { ...closed, transform: "scale(.94, .6)", opacity: 0, offset: 1 },
+  ], { duration: reduced ? 1 : REMOVE_MS, easing: "cubic-bezier(.4, 0, .2, 1)", fill: "forwards" });
+  await Promise.race([leaving.finished, new Promise((done) => setTimeout(done, REMOVE_MS + 100))]);
+
+  let failed = false;
+  try {
+    const response = await fetch(api("/api/delete", { id: item.id }), { method: "POST" });
+    // Already gone counts as done: another device may have removed it first.
+    failed = !response.ok && response.status !== 404;
+  } catch {
+    failed = true;
+  }
+  if (failed) {
+    leaving.cancel();
+    row.style.overflow = "";
+    row.style.pointerEvents = "";
+    delete row.dataset.leaving;
+    if (!quiet) toast("削除できませんでした");
+    return false;
+  }
+  if (!quiet) toast(item.saved ? "履歴から消しました。ファイルは受信フォルダに残っています" : "削除しました");
+  return true;
+}
+
+/* ---------- selecting several ---------- */
+const picked = new Set();
+let selecting = false;
+
+function setSelecting(on) {
+  selecting = on;
+  picked.clear();
+  document.body.classList.toggle("selecting", on);
+  $("items").classList.toggle("selecting", on);
+  $("select-bar").hidden = !on;
+  $("select-toggle").textContent = on ? "完了" : "選択";
+  syncSelection();
+}
+
+function syncSelection() {
+  const live = new Map(state.items.map((item) => [item.id, item]));
+  for (const id of picked) if (!live.has(id)) picked.delete(id);
+  for (const [id, entry] of rendered) {
+    entry.node.classList.toggle("picked", picked.has(id));
+    entry.node.querySelector(".pick").checked = picked.has(id);
+  }
+  $("select-toggle").hidden = state.items.length === 0 && !selecting;
+  if (selecting && state.items.length === 0) {
+    setSelecting(false);
+    return;
+  }
+  $("select-count").textContent = `${picked.size}件`;
+  $("select-all").textContent = picked.size === state.items.length && picked.size > 0 ? "選択を解除" : "すべて選択";
+  $("bulk-delete").disabled = picked.size === 0;
+
+  // Only files sent to this device and not already in its save folder can be saved from here.
+  const saveable = [...picked].map((id) => live.get(id)).filter((item) => item.kind === "file" && item.to === state.me && !item.saved);
+  const save = $("bulk-save");
+  save.hidden = isPc() && !saveable.length;
+  save.setAttribute("aria-disabled", String(saveable.length === 0));
+  save.textContent = saveable.length ? `保存 ${saveable.length}` : "保存";
+  save.removeAttribute("download");
+  if (!saveable.length) {
+    save.removeAttribute("href");
+    return;
+  }
+  const withToken = (params) => (inSheet && pageToken ? { ...params, t: pageToken } : params);
+  if (saveable.length === 1) {
+    const [only] = saveable;
+    save.href = inSheet ? api("/view/" + only.id, withToken({ save: 1 })) : api("/file/" + only.id);
+    if (!inSheet) save.download = only.name;
+  } else {
+    const ids = saveable.map((item) => item.id).join(",");
+    // The sheet cannot download, so it hands over to a Safari page that starts the download and offers a way back.
+    save.href = api(inSheet ? "/zip-view" : "/zip", withToken({ ids }));
+    if (!inSheet) save.download = "";
+  }
+}
+
+$("select-toggle").onclick = () => setSelecting(!selecting);
+$("select-all").onclick = () => {
+  const all = picked.size === state.items.length;
+  picked.clear();
+  if (!all) state.items.forEach((item) => picked.add(item.id));
+  syncSelection();
+};
+$("bulk-delete").onclick = async () => {
+  const targets = [...picked].map((id) => [state.items.find((item) => item.id === id), rendered.get(id)?.node]).filter(([item, node]) => item && node);
+  // A short stagger so the rows go one after another rather than all at once.
+  const results = await Promise.all(targets.map(([item, node], index) =>
+    new Promise((done) => setTimeout(done, Math.min(index, 8) * 45)).then(() => removeRow(item, node, true))));
+  const removed = results.filter(Boolean).length;
+  const failed = results.length - removed;
+  toast(failed ? `${removed}件を削除しました。${failed}件は削除できませんでした` : `${removed}件を削除しました`);
+};
+
+function itemRow(item) {
+  const incoming = item.to === state.me;
+  const row = el("div", { className: "row" });
+  const body = el("div", { className: "body" });
+  const actions = el("div", { className: "actions" });
+  const direction = incoming ? `${item.fromName} から` : `${item.toName} へ`;
+
+  if (item.kind === "text") {
+    const text = el("div", { className: "text-body" });
+    text.append(linkify(item.text));
+    body.append(text);
+    actions.append(el("button", { type: "button", textContent: "コピー", onclick: () => copyText(item.text) }));
+  } else {
+    body.append(el("div", { className: "name", textContent: item.name }));
+    if (incoming && item.saved) {
+      if (isPc()) {
+        actions.append(el("button", {
+          type: "button", textContent: "フォルダで表示",
+          onclick: () => fetch(api("/api/reveal", { id: item.id }), { method: "POST" }),
+        }));
+      }
+    } else if (incoming) {
+      // A plain link leaves the sheet for Safari, and the view page gives Safari a way back here.
+      const viewUrl = (params = {}) => api("/view/" + item.id, inSheet && pageToken ? { ...params, t: pageToken } : params);
+      const save = inSheet
+        ? el("a", { className: "btn", textContent: "保存", href: viewUrl({ save: 1 }) })
+        : el("a", { className: "btn", textContent: "保存", href: api("/file/" + item.id), download: item.name });
+      actions.append(save);
+      if (item.mime.startsWith("image/")) {
+        actions.append(el("a", { className: "btn", textContent: "写真に保存", href: viewUrl() }));
+      } else if (item.mime.startsWith("video/")) {
+        actions.append(el("a", { className: "btn", textContent: "再生", href: viewUrl() }));
+      }
+    }
+  }
+
+  const meta = [direction, formatTime(item.time)];
+  if (item.kind === "file") meta.push(formatSize(item.size));
+  const metaEl = el("div", { className: "meta", textContent: meta.join(" ・ ") });
+  if (item.saved && incoming) metaEl.append(el("span", { className: "status-ok", textContent: " ・ 受信フォルダに保存済み" }));
+  else if (!incoming && item.kind === "file") {
+    metaEl.append(item.taken
+      ? el("span", { className: "status-ok", textContent: " ・ 受け取り済み" })
+      : " ・ 相手の受け取り待ち");
+  }
+  body.append(metaEl);
+
+  const removeLabel = item.saved ? "履歴から消す" : "削除";
+  actions.append(el("button", {
+    type: "button", className: "danger", textContent: removeLabel,
+    onclick: () => removeRow(item, row),
+  }));
+  body.append(actions);
+  const toggle = () => {
+    if (picked.has(item.id)) picked.delete(item.id);
+    else picked.add(item.id);
+    syncSelection();
+  };
+  const pick = el("input", { type: "checkbox", className: "pick", onchange: toggle });
+  pick.setAttribute("aria-label", `${item.name}を選択`);
+  row.addEventListener("click", (event) => {
+    if (selecting && event.target !== pick) toggle();
+  });
+  row.append(pick, thumbFor(item), body);
+  return row;
+}
+
+let pairing = null;
+async function renderPairing() {
+  const panel = $("pair");
+  if (!isPc()) { panel.hidden = true; return; }
+  panel.hidden = false;
+  const someoneOnline = state.devices.some((d) => d.id !== "pc" && d.online);
+  if (!renderPairing.touched) panel.open = !someoneOnline;
+  const direct = state.direct || { status: "off" };
+  renderDirect(direct);
+  // Without a hotspot to start, joining a shared network is the way to connect, so it comes first.
+  if (direct.status === "unsupported" && !renderPairing.tabSet && !store.get("bd_pair_tab")) {
+    renderPairing.tabSet = true;
+    showPairTab("lan");
+  }
+  if (!pairing) await loadPairing();
+}
+
+async function loadPairing() {
+  const response = await fetch("/api/pairing");
+  if (!response.ok) return;
+  const latest = await response.json();
+  // The address changes when the computer moves to another network, such as a phone's tethering.
+  if (pairing && JSON.stringify(latest.addresses.map((a) => a.ip)) === JSON.stringify(pairing.addresses.map((a) => a.ip))) return;
+  pairing = latest;
+  const select = $("ip-select");
+  select.replaceChildren(...pairing.addresses.map((a, i) => el("option", { value: i, textContent: a.ip })));
+  select.hidden = pairing.addresses.length < 2;
+  select.onchange = () => showQr(pairing.addresses[select.value]);
+  if (pairing.addresses.length) showQr(pairing.addresses[0]);
+  else $("pair-url").textContent = "ネットワークに接続されていません。";
+}
+setInterval(() => {
+  if (isPc() && !document.hidden) loadPairing().catch(() => {});
+}, 8000);
+
+function showPairTab(name) {
+  store.set("bd_pair_tab", name);
+  $("direct").hidden = name !== "direct";
+  $("lan").hidden = name !== "lan";
+  $("tab-direct").setAttribute("aria-selected", String(name === "direct"));
+  $("tab-lan").setAttribute("aria-selected", String(name === "lan"));
+  $("pair-tabs").dataset.active = name;
+}
+$("tab-direct").onclick = () => { renderPairing.touched = true; showPairTab("direct"); };
+$("tab-lan").onclick = () => { renderPairing.touched = true; showPairTab("lan"); };
+showPairTab(store.get("bd_pair_tab") === "lan" ? "lan" : "direct");
+
+$("pair").addEventListener("click", (event) => {
+  if (event.target.tagName === "SUMMARY") renderPairing.touched = true;
+});
+
+function showQr(address) {
+  // The SVG is generated by this app's own server from its own address list.
+  $("qr").innerHTML = address.qr;
+  $("pair-url").textContent = address.ip;
+}
+
+const DIRECT_ERRORS = {
+  "wifi-off": "PCのWi-Fiがオフです。Windowsの設定でオンにしてから、もう一度開始してください。",
+  "start-failed": "無線を開始できませんでした。Wi-Fiがオンか確認してください。",
+  "link-lost": "無線が止まりました。もう一度開始してください。",
+  "no-internet": "モバイルホットスポットにはPCのインターネット接続が必要です。",
+};
+
+function directAction(params) {
+  renderPairing.touched = true;
+  $("pair").open = true;
+  fetch(api("/api/direct", params), { method: "POST" }).catch(() => toast("操作できませんでした"));
+}
+
+function directButton(label, params, primary) {
+  return el("button", {
+    type: "button", textContent: label, className: primary ? "primary" : "", onclick: () => directAction(params),
+  });
+}
+
+function qrStep(title, svg, fallback) {
+  const box = el("div", {}, el("strong", { textContent: title }));
+  if (svg) {
+    const code = el("div", { className: "direct-qr" });
+    // The SVG contains only QR modules generated by this app's own server.
+    code.innerHTML = svg;
+    box.append(code);
+  } else {
+    box.append(el("p", { className: "hint", textContent: fallback }));
+  }
+  return box;
+}
+
+let directSignature = null;
+let directView = null;
+function renderDirect(direct) {
+  const signature = JSON.stringify(direct);
+  if (signature === directSignature) return;
+  directSignature = signature;
+  if (direct.status !== "on") directView = null;
+  const body = $("direct-body");
+  body.replaceChildren();
+  // iPhones could not join the Wi-Fi Direct group in testing, while the mobile hotspot works.
+  const start = (label) => directButton(label, { action: "start", mode: "hotspot" }, true);
+
+  if (direct.status === "unsupported") {
+    body.append(el("p", {
+      className: "hint",
+      textContent: "ルーターがない場所では、スマホのテザリング（インターネット共有）にこのパソコンをつないでから、「同じネットワーク」のQRコードを読み取ってください。",
+    }));
+  } else if (direct.status === "off") {
+    body.append(
+      el("p", { className: "hint", textContent: "PCのモバイルホットスポットを使い、スマホと直接つなぎます。PCがインターネットにつながっている必要があります。" }),
+      start("直接接続を開始")
+    );
+  } else if (direct.status === "starting") {
+    body.append(el("p", { className: "hint", textContent: "無線を準備しています…" }));
+  } else if (direct.status === "error") {
+    body.append(el("p", { className: "direct-error", textContent: DIRECT_ERRORS[direct.code] || DIRECT_ERRORS["start-failed"] }), start("もう一度開始"));
+  } else if (direct.status === "on") {
+    // One code at a time: the page's code appears by itself once a device has joined the Wi-Fi.
+    const showPage = directView ? directView === "page" : direct.clients > 0;
+    const switchTo = (view, label) => el("button", {
+      type: "button", textContent: label,
+      onclick: () => { directView = view; directSignature = null; renderDirect(direct); },
+    });
+    const buttons = el("div", { className: "direct-buttons" }, directButton("直接接続を止める", { action: "stop" }));
+    if (showPage) {
+      body.append(
+        el("div", { className: "direct-steps" }, qrStep("カメラで読み取り、BridgeDropを開く", direct.urlQr, direct.url)),
+        el("p", { className: "hint", textContent: "開いた画面をブラウザのメニューから「ホーム画面に追加」しておくと、次回はQRコードなしで開けます。" })
+      );
+      buttons.append(switchTo("wifi", "別の端末を無線に接続する"));
+      body.append(buttons);
+    } else {
+      const cred = el("p", { className: "direct-cred" });
+      cred.append("ネットワーク名: ", el("code", { textContent: direct.ssid }), " ・ パスワード: ", el("code", { textContent: direct.passphrase }));
+      body.append(
+        el("div", { className: "direct-steps" }, qrStep("カメラで読み取り、無線に接続", direct.wifiQr, "下のネットワーク名とパスワードで接続してください。")),
+        el("p", { className: "hint", textContent: direct.portal
+          ? "読み取って接続するとBridgeDropが開きます。自動で開かないときは、次に表示されるQRコードを読み取ってください。"
+          : "接続できると、BridgeDropを開くQRコードに自動で切り替わります。" })
+      );
+      buttons.append(switchTo("page", "接続済みなので次へ"));
+      body.append(buttons, cred);
+    }
+    body.append(el("p", { className: "hint direct-note", textContent: "使用中はスマホがPC経由でインターネットにも接続します。使い終わったら止めてください。" }));
+  }
+}
+
+function notifyIncoming() {
+  const incoming = state.items.filter((item) => item.to === state.me);
+  if (knownIncoming) {
+    const fresh = incoming.filter((item) => !knownIncoming.has(item.id));
+    if (fresh.length) toast(`${fresh[0].fromName} から受信しました`);
+  }
+  knownIncoming = new Set(incoming.map((item) => item.id));
+}
+
+/* ---------- liquid glass ---------- */
+const glass = (() => {
+  const BEZEL = 26, MAP_SCALE = 0.5, BEND = 46;
+  const SVG = "http://www.w3.org/2000/svg";
+  const defs = $("lens-defs");
+  // Only Chromium bends the backdrop through an SVG filter. Elsewhere glass stays frosted, which is still correct.
+  const canBend = /Chrome\//.test(navigator.userAgent) && !matchMedia("(prefers-reduced-transparency: reduce)").matches;
+  const surfaces = [...document.querySelectorAll(".glass")];
+
+  // A displacement map of a rounded rectangle: flat in the middle, bending light hard toward the rim like thick glass.
+  function bezelMap(width, height, radius) {
+    const w = Math.max(2, Math.round(width * MAP_SCALE)), h = Math.max(2, Math.round(height * MAP_SCALE));
+    const r = Math.min(radius, width / 2, height / 2) * MAP_SCALE, bezel = BEZEL * MAP_SCALE;
+    const canvas = document.createElement("canvas");
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext("2d"), image = ctx.createImageData(w, h), data = image.data;
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const qx = Math.abs(x + 0.5 - w / 2) - (w / 2 - r), qy = Math.abs(y + 0.5 - h / 2) - (h / 2 - r);
+        const outside = Math.hypot(Math.max(qx, 0), Math.max(qy, 0));
+        const inset = r - (outside + Math.min(Math.max(qx, qy), 0));
+        let dx = 0, dy = 0;
+        if (inset < bezel) {
+          // Inward along the surface normal, strongest at the very edge.
+          const strength = (1 - Math.max(inset, 0) / bezel) ** 2;
+          const nx = qx > 0 ? qx : (qy > 0 ? 0 : (qx > qy ? 1 : 0)), ny = qy > 0 ? qy : (qx > 0 ? 0 : (qy >= qx ? 1 : 0));
+          const length = Math.hypot(nx, ny) || 1;
+          dx = -Math.sign(x + 0.5 - w / 2) * (nx / length) * strength;
+          dy = -Math.sign(y + 0.5 - h / 2) * (ny / length) * strength;
+        }
+        const p = (y * w + x) * 4;
+        data[p] = 128 + dx * 127;
+        data[p + 1] = 128 + dy * 127;
+        data[p + 2] = 128;
+        data[p + 3] = 255;
+      }
+    }
+    ctx.putImageData(image, 0, 0);
+    return canvas.toDataURL();
+  }
+
+  function shape(element, index) {
+    const width = element.offsetWidth, height = element.offsetHeight;
+    if (!width || !height) return;
+    const radius = parseFloat(getComputedStyle(element).borderTopLeftRadius) || 0;
+    const id = `lens-${index}`;
+    defs.querySelector(`#${id}`)?.remove();
+    const filter = document.createElementNS(SVG, "filter");
+    filter.id = id;
+    for (const [name, value] of Object.entries({ x: 0, y: 0, width, height, filterUnits: "userSpaceOnUse", "color-interpolation-filters": "sRGB" })) {
+      filter.setAttribute(name, value);
+    }
+    const map = document.createElementNS(SVG, "feImage");
+    for (const [name, value] of Object.entries({ href: bezelMap(width, height, radius), x: 0, y: 0, width, height, preserveAspectRatio: "none", result: "map" })) {
+      map.setAttribute(name, value);
+    }
+    const bend = document.createElementNS(SVG, "feDisplacementMap");
+    for (const [name, value] of Object.entries({ in: "SourceGraphic", in2: "map", scale: BEND, xChannelSelector: "R", yChannelSelector: "G" })) {
+      bend.setAttribute(name, value);
+    }
+    filter.append(map, bend);
+    defs.append(filter);
+    element.style.backdropFilter = `url(#${id}) blur(5px) saturate(175%)`;
+  }
+
+  if (canBend) {
+    const pending = new Map();
+    const observer = new ResizeObserver((entries) => {
+      for (const { target } of entries) {
+        clearTimeout(pending.get(target));
+        pending.set(target, setTimeout(() => shape(target, surfaces.indexOf(target)), 120));
+      }
+    });
+    surfaces.forEach((surface, index) => {
+      shape(surface, index);
+      observer.observe(surface);
+    });
+  }
+
+  // On drop the tray gives like something soft.
+  function land() {
+    const tray = $("drop");
+    tray.classList.remove("landed");
+    void tray.offsetWidth;
+    tray.classList.add("landed");
+  }
+  $("drop").addEventListener("animationend", (event) => {
+    if (event.animationName === "landed") $("drop").classList.remove("landed");
+  });
+
+  return { land };
+})();
+
+/* ---------- sending ---------- */
+const queueList = [];
+let uploading = false;
+
+function enqueue(files) {
+  if (!target) {
+    toast("端末をつなぐと送れます");
+    return;
+  }
+  for (const file of files) {
+    const bar = el("progress", { max: 100, value: 0 });
+    const meta = el("div", { className: "meta", textContent: "待機中" });
+    const cancel = el("button", { type: "button", className: "danger", textContent: "キャンセル" });
+    const row = el("div", { className: "row" },
+      el("div", { className: "thumb", textContent: "↑" }),
+      el("div", { className: "body" }, el("div", { className: "name", textContent: file.name }), meta, bar,
+        el("div", { className: "actions" }, cancel)));
+    const job = { file, to: null, row, bar, meta, cancel, xhr: null, cancelled: false };
+    cancel.onclick = () => {
+      job.cancelled = true;
+      if (job.xhr) job.xhr.abort();
+      finishRow(job);
+    };
+    queueList.push(job);
+    $("uploads").append(row);
+  }
+  $("uploads-card").hidden = false;
+  pump();
+}
+
+function finishRow(job) {
+  job.row.remove();
+  $("uploads-card").hidden = $("uploads").children.length === 0;
+}
+
+async function pump() {
+  if (uploading) return;
+  uploading = true;
+  while (queueList.length) {
+    const job = queueList[0];
+    if (job.cancelled) {
+      queueList.shift();
+      continue;
+    }
+    // If the device leaves mid-queue, the rest wait here and go out when one is back.
+    if (!target) {
+      for (const waiting of queueList) waiting.meta.textContent = "送信先の端末がつながるのを待っています";
+      break;
+    }
+    queueList.shift();
+    job.to = target;
+    try {
+      await upload(job);
+      finishRow(job);
+    } catch (error) {
+      if (!job.cancelled) {
+        job.meta.textContent = "失敗: " + error.message;
+        job.cancel.textContent = "閉じる";
+      }
+    }
+  }
+  uploading = false;
+}
+
+function upload(job) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    job.xhr = xhr;
+    xhr.open("POST", api("/api/upload", { to: job.to, name: job.file.name, type: job.file.type }));
+    xhr.upload.onprogress = (event) => {
+      if (!event.lengthComputable) return;
+      job.bar.value = (event.loaded / event.total) * 100;
+      job.meta.textContent = `${formatSize(event.loaded)} / ${formatSize(event.total)}`;
+    };
+    xhr.onload = () => {
+      if (xhr.status === 200) return resolve();
+      let message = "エラー " + xhr.status;
+      try { message = JSON.parse(xhr.responseText).error || message; } catch {}
+      reject(new Error(message));
+    };
+    xhr.onerror = () => reject(new Error("接続が切れました"));
+    xhr.onabort = () => reject(new Error("キャンセルしました"));
+    xhr.send(job.file);
+  });
+}
+
+$("file").addEventListener("change", (event) => {
+  enqueue(event.target.files);
+  event.target.value = "";
+});
+
+const drop = $("drop");
+for (const name of ["dragenter", "dragover"]) {
+  document.addEventListener(name, (event) => {
+    event.preventDefault();
+    if (target) drop.classList.add("over");
+  });
+}
+document.addEventListener("dragleave", (event) => {
+  if (!event.relatedTarget) drop.classList.remove("over");
+});
+document.addEventListener("drop", (event) => {
+  event.preventDefault();
+  drop.classList.remove("over");
+  if (target) glass.land();
+  const entries = [...event.dataTransfer.items].map((item) => item.webkitGetAsEntry && item.webkitGetAsEntry());
+  if (entries.some((entry) => entry && entry.isDirectory)) {
+    toast("フォルダは送れません。圧縮するか中のファイルを選んでください");
+    return;
+  }
+  enqueue(event.dataTransfer.files);
+});
+
+$("send-text").addEventListener("click", async () => {
+  const text = $("text").value;
+  if (!text.trim() || !target) return;
+  const response = await fetch(api("/api/text", { to: target }), { method: "POST", body: text });
+  if (response.ok) { $("text").value = ""; toast("送信しました"); }
+  else toast("送信できませんでした");
+});
+
+$("me").addEventListener("click", async () => {
+  if (isPc()) return;
+  const name = prompt("この端末の名前", $("me-name").textContent);
+  if (!name || !name.trim()) return;
+  const trimmed = name.trim().slice(0, 40);
+  store.set("bd_name", trimmed);
+  await fetch(api("/api/rename", { name: trimmed }), { method: "POST" });
+});
+
+$("quit").addEventListener("click", () => {
+  $("quit-note").textContent = state.direct?.status === "on"
+    ? "ホットスポットとスマホとの接続も切れます。"
+    : "つないでいる端末との接続も切れます。";
+  $("quit-dialog").showModal();
+  $("quit-cancel").focus();
+});
+$("quit-cancel").addEventListener("click", () => $("quit-dialog").close());
+// A click on the dimmed area outside the panel lands on the dialog element itself.
+$("quit-dialog").addEventListener("click", (event) => {
+  if (event.target === $("quit-dialog")) $("quit-dialog").close();
+});
+$("quit-confirm").addEventListener("click", async () => {
+  try {
+    await fetch(api("/api/quit"), { method: "POST" });
+  } catch {
+    $("quit-dialog").close();
+    toast("終了できませんでした");
+    return;
+  }
+  source.close();
+  $("quit-dialog").close();
+  document.body.classList.add("ended");
+  $("ended").hidden = false;
+  window.close();
+});
+
+if (inSheet) {
+  $("open-safari").href = location.href;
+  $("sheet-notice").hidden = false;
+}
+
+connect();
+</script>
+</body>
+</html>
