@@ -84,7 +84,12 @@ def main():
                         {f"{engine}-{name}": capture(browser, f"{engine}-{name}", url, out, **options)})
                     shot("pc-not-connected", home)
                     shot("pc-dark", home, scheme="dark")
-                    shot("pc-same-network", home, prepare=lambda page: page.click("#tab-lan"))
+                    def show_lan_code(page):
+                        page.click("#tab-lan")
+                        if lan:
+                            page.wait_for_selector("#qr svg", timeout=8000)
+
+                    shot("pc-same-network", home, prepare=show_lan_code)
                     shot("pc-quit-dialog", home, prepare=lambda page: page.click("#quit"))
                     if lan:
                         phone = f"http://{lan}:{PORT}/?t={token}"

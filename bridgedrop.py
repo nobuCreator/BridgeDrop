@@ -139,7 +139,7 @@ class Store:
         self.save_dir = save_dir
         self.spool_dir = spool_dir
         self.items = {}
-        name = platform.node().removesuffix(".local") or "PC"
+        name = platform.node().removesuffix(".local")[:24] or "PC"
         kind = "mac" if IS_MAC else "windows" if IS_WINDOWS else "other"
         self.devices = {PC_ID: {"id": PC_ID, "name": name, "kind": kind, "named": True, "resolved": False}}
         self.connections = {}
@@ -1031,15 +1031,16 @@ def local_addresses():
             addresses.append(probe.getsockname()[0])
     except OSError:
         pass
-    try:
-        addresses += socket.gethostbyname_ex(socket.gethostname())[2]
-    except OSError:
-        pass
     if IS_MAC:
-        # A Mac's host name often resolves to nothing useful, and may have no default route on a phone's tethering.
+        # Resolving a Mac's own host name can block for many seconds, and ifconfig lists every address anyway.
         try:
             addresses += parse_ifconfig(subprocess.run(["ifconfig"], capture_output=True, text=True, timeout=3).stdout)
         except (OSError, subprocess.SubprocessError):
+            pass
+    else:
+        try:
+            addresses += socket.gethostbyname_ex(socket.gethostname())[2]
+        except OSError:
             pass
     # 192.168.137.x is the direct link's own subnet, which has its own QR codes.
     usable = [a for a in addresses if not a.startswith(("127.", "169.254.", "0.", "192.168.137."))]
