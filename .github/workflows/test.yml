@@ -21,6 +21,33 @@ jobs:
       - name: Server end to end
         run: python tests/test_server.py
 
+  # Standalone apps, run by hand or for a version tag since building on macOS uses up free minutes quickly.
+  package:
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/')
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            app: dist/BridgeDrop.app/Contents/MacOS/BridgeDrop
+          - os: windows-latest
+            app: dist/BridgeDrop/BridgeDrop.exe
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r tools/build-requirements.txt
+      - run: python tools/build.py
+      - name: Test the packaged app, not the source
+        shell: bash
+        run: BRIDGEDROP_APP="$PWD/${{ matrix.app }}" python tests/test_server.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BridgeDrop-${{ matrix.os }}
+          path: dist/*.zip
+
   # The screens as they look on a real Mac, downloadable from the run's page.
   mac-screens:
     runs-on: macos-latest

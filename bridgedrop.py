@@ -33,11 +33,14 @@ try:
 except ImportError:
     winreg = None
 
+__version__ = "1.0.0"
+
 IS_WINDOWS = sys.platform == "win32"
 IS_MAC = sys.platform == "darwin"
 MAC_APP_BROWSERS = ("Google Chrome", "Microsoft Edge")
 
-APP_DIR = Path(__file__).resolve().parent
+# A packaged app unpacks its bundled files elsewhere and reports the place in sys._MEIPASS.
+APP_DIR = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
 DEFAULT_PORT = 8765
 COOKIE_NAME = "bd_token"
 CHUNK_SIZE = 1024 * 1024
@@ -271,7 +274,7 @@ class Store:
                 if device_id in (item["from"], item["to"])
             ]
         items.sort(key=lambda item: item["time"], reverse=True)
-        return {"me": device_id, "devices": devices, "items": items}
+        return {"me": device_id, "devices": devices, "items": items, "version": __version__}
 
     def public_item(self, item):
         hidden = {"path"}
@@ -1160,6 +1163,7 @@ def main():
                         help="folder for the pairing token and files waiting to be picked up")
     parser.add_argument("--new-token", action="store_true", help="revoke paired devices by issuing a new QR code")
     parser.add_argument("--no-browser", action="store_true")
+    parser.add_argument("--version", action="version", version=__version__)
     args = parser.parse_args()
     # There is no stdout when started without a console.
     if sys.stdout:

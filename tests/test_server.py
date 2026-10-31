@@ -2,6 +2,7 @@
 import http.client
 import io
 import json
+import os
 import pathlib
 import subprocess
 import sys
@@ -29,7 +30,10 @@ class ServerTest(unittest.TestCase):
         cls.temp = tempfile.TemporaryDirectory()
         base = pathlib.Path(cls.temp.name)
         cls.save_dir = base / "save"
-        cls.proc = subprocess.Popen([sys.executable, str(ROOT / "bridgedrop.py"), "--no-browser", "--port", str(PORT),
+        # Set BRIDGEDROP_APP to run these same checks against a packaged build instead of the source.
+        packaged = os.environ.get("BRIDGEDROP_APP")
+        command = [packaged] if packaged else [sys.executable, str(ROOT / "bridgedrop.py")]
+        cls.proc = subprocess.Popen([*command, "--no-browser", "--port", str(PORT),
                                      "--data-dir", str(base / "data"), "--save-dir", str(cls.save_dir)])
         started = time.monotonic()
         cls.startup_seconds = None
@@ -81,6 +85,12 @@ class ServerTest(unittest.TestCase):
         started = time.monotonic()
         self.request("GET", "/api/pairing")
         self.assertLess(time.monotonic() - started, 5)
+
+    def test_reports_version(self):
+        self.assertEqual(self.state()["version"], bridgedrop.__version__)
+        status, page = self.request("GET", "/")
+        self.assertEqual(status, 200)
+        self.assertIn('id="version"', page.decode())
 
     def test_page_and_auth(self):
         self.assertEqual(self.request("GET", "/")[0], 200)

@@ -163,6 +163,7 @@ textarea {
 textarea:focus, textarea:focus-visible { outline: none; }
 textarea::placeholder { color: var(--secondary); }
 
+#version { margin: 18px 0 0; text-align: center; font-size: 11px; color: var(--secondary); font-variant-numeric: tabular-nums; }
 #history-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-right: 6px; }
 #history-head .section-title { flex: 1; }
 #select-toggle { background: none; margin-top: 12px; }
@@ -332,6 +333,8 @@ body.ended main { display: none; }
     <p class="hint" id="empty">まだ何もありません。</p>
   </section>
 
+  <footer id="version"></footer>
+
   <div id="select-bar" class="glass" hidden>
     <button id="select-all" type="button">すべて選択</button>
     <span id="select-count" aria-live="polite"></span>
@@ -485,6 +488,7 @@ window.addEventListener("pageshow", (event) => {
 function render() {
   const me = state.devices.find((d) => d.id === state.me);
   if (me) $("me-name").textContent = me.name;
+  if (state.version) $("version").textContent = `BridgeDrop ${state.version}`;
   $("quit").hidden = !isPc();
   renderTargets();
   renderItems();
