@@ -25,3 +25,7 @@ python tools/manual_screens.py  説明書の画面を撮り直す
 ```
 
 [ROADMAP.md](ROADMAP.md) に今後の予定があります。
+
+## ライセンス
+
+[MIT License](LICENSE)。無料で使え、改変や再配布もできます。動作の保証はありません。

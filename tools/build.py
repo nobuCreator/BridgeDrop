@@ -22,6 +22,7 @@ def main():
         "--icon", str(ROOT / "assets" / "icon.png"),
         "--add-data", f"{ROOT / 'index.html'}:.",
         "--add-data", f"{ROOT / 'assets'}:assets",
+        "--add-data", f"{ROOT / 'LICENSE'}:.",
         "--distpath", str(dist), "--workpath", str(ROOT / "build"), "--specpath", str(ROOT / "build"),
     ]
     if bridgedrop.IS_WINDOWS:

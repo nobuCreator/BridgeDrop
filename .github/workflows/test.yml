@@ -48,6 +48,34 @@ jobs:
           name: BridgeDrop-${{ matrix.os }}
           path: dist/*.zip
 
+  # A version tag such as v1.0.0 publishes both apps as a Release, once every check has passed.
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [test, package]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: The tag must match the version in the app
+        run: |
+          version=$(sed -n 's/^__version__ = "\(.*\)"$/\1/p' bridgedrop.py)
+          test "v$version" = "$GITHUB_REF_NAME"
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          pattern: BridgeDrop-*
+          merge-multiple: true
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" artifacts/*.zip --title "BridgeDrop ${GITHUB_REF_NAME#v}" --notes "パソコンとスマホの間でファイルを受け渡すアプリです。
+
+          Windowsの方は windows.zip、Macの方は mac.zip をダウンロードしてください。Mac版は試験中です。
+
+          使い方は[説明書](https://github.com/${GITHUB_REPOSITORY}/blob/${GITHUB_REF_NAME}/docs/説明書.md)をご覧ください。"
+
   # The screens as they look on a real Mac, downloadable from the run's page.
   mac-screens:
     runs-on: macos-latest
