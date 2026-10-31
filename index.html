@@ -137,7 +137,10 @@ body.yielded #sheet-notice { margin-top: 24px; padding: 24px; font-size: 17px; f
   76% { transform: scale(1.005, .996); border-radius: 34px; }
   100% { transform: scale(1); border-radius: 32px; }
 }
-#file { position: absolute; width: 1px; height: 1px; opacity: 0; }
+#file, #file-media { position: absolute; width: 1px; height: 1px; opacity: 0; }
+#android-picks { display: flex; gap: 8px; margin-top: 14px; }
+#android-picks button { min-height: 44px; padding-inline: 20px; }
+#drop.waiting #android-picks { display: none; }
 #drop svg { width: 46px; height: 46px; margin-bottom: 12px; fill: none; stroke: var(--tint); stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; transition: transform .5s var(--spring); }
 #drop.over svg { transform: translateY(5px) scale(1.1); }
 #drop-title { font-size: clamp(22px, 5vw, 28px); font-weight: 700; line-height: 1.2; letter-spacing: -.005em; }
@@ -299,6 +302,11 @@ body.ended main { display: none; }
     <svg viewBox="0 0 44 44" aria-hidden="true"><path d="M22 6v20"/><path d="M14 18.500l8 8 8-8"/><path d="M7 31v4a4 4 0 0 0 4 4h22a4 4 0 0 0 4-4v-4"/></svg>
     <span id="drop-title">ここにドロップ</span>
     <span id="drop-sub">写真・動画・書類など。複数選択できます</span>
+    <span id="android-picks" hidden>
+      <button id="pick-media" type="button" class="primary">写真・動画</button>
+      <button id="pick-files" type="button">ファイル</button>
+    </span>
+    <input type="file" id="file-media" accept="image/*,video/*" multiple tabindex="-1" aria-hidden="true">
   </label>
 
   <h2 class="group-title">送信先</h2>
@@ -366,7 +374,9 @@ function detectKind() {
 const kind = detectKind();
 const READY_TEXT = kind === "windows" || kind === "mac"
   ? { title: "ここにドロップ", sub: "ファイルをドラッグ＆ドロップ。クリックでも選べます" }
-  : { title: "ファイルを選ぶ", sub: "写真・動画・書類など。複数選択できます" };
+  : kind === "android"
+    ? { title: "送るものを選ぶ", sub: "複数まとめて選べます" }
+    : { title: "ファイルを選ぶ", sub: "写真・動画・書類など。複数選択できます" };
 // The sheet iOS opens after joining a Wi-Fi network identifies itself by lacking "Safari" in its user agent.
 // It cannot download, but plain links leave it for Safari, which has no cookie yet and so needs the token.
 let inSheet = (kind === "iphone" || kind === "ipad") && !/Safari\//.test(navigator.userAgent) && !navigator.standalone;
@@ -504,6 +514,7 @@ function renderTargets() {
   $("send-text").disabled = !target;
   const ready = Boolean(target);
   $("file").disabled = !ready;
+  $("file-media").disabled = !ready;
   $("drop").classList.toggle("waiting", !ready);
   $("drop-title").textContent = ready ? READY_TEXT.title : "端末がつながっていません";
   $("drop-sub").textContent = ready ? READY_TEXT.sub : "端末をつなぐと、ここからファイルを送れます";
@@ -1081,10 +1092,19 @@ function upload(job) {
   });
 }
 
-$("file").addEventListener("change", (event) => {
-  enqueue(event.target.files);
-  event.target.value = "";
-});
+for (const input of [$("file"), $("file-media")]) {
+  input.addEventListener("change", (event) => {
+    enqueue(event.target.files);
+    event.target.value = "";
+  });
+}
+
+// Android's chooser leaves out the photo album unless the input is limited to images and videos, so it gets both.
+if (kind === "android") {
+  $("android-picks").hidden = false;
+  $("pick-media").onclick = () => $("file-media").click();
+  $("pick-files").onclick = () => $("file").click();
+}
 
 const drop = $("drop");
 for (const name of ["dragenter", "dragover"]) {
