@@ -3,7 +3,7 @@
 Kept to that single shape inside a 680px safe zone so it survives at 29px. It hints at the supported systems through
 colour only, because their logos are trademarks. Needs Pillow: python tools/make_icon.py writes:
   assets/icon.png        rounded, for the desktop apps
-  assets/icon-touch.png  square and opaque, since phones round home screen icons themselves
+  assets/icon-touch.png, icon-192.png, icon-512.png  square and opaque, since phones round home screen icons themselves
   assets/icon-32.png     for browser tabs
 """
 import math
@@ -73,7 +73,8 @@ def main():
 
     rounded.resize((SIZE, SIZE), Image.LANCZOS).save(ASSETS / "icon.png")
     rounded.resize((32, 32), Image.LANCZOS).save(ASSETS / "icon-32.png")
-    full.convert("RGB").resize((180, 180), Image.LANCZOS).save(ASSETS / "icon-touch.png")
+    for size, name in ((180, "icon-touch.png"), (192, "icon-192.png"), (512, "icon-512.png")):
+        full.convert("RGB").resize((size, size), Image.LANCZOS).save(ASSETS / name)
 
     # White artwork against both ends of the gradient, by the WCAG formula.
     def luminance(colour):

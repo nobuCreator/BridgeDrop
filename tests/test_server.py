@@ -87,10 +87,16 @@ class ServerTest(unittest.TestCase):
         self.assertLess(time.monotonic() - started, 5)
 
     def test_icons_need_no_token_and_reveal_nothing_else(self):
-        for path in ("/icon-32.png", "/apple-touch-icon.png"):
+        for path in ("/icon-32.png", "/apple-touch-icon.png", "/icon-192.png", "/icon-512.png"):
             status, data = self.request("GET", path, authorize=False)
             self.assertEqual(status, 200)
             self.assertTrue(data.startswith(b"\x89PNG"))
+        status, data = self.request("GET", "/manifest.webmanifest", authorize=False)
+        self.assertEqual(status, 200)
+        manifest = json.loads(data)
+        self.assertEqual(manifest["name"], "BridgeDrop")
+        self.assertNotIn("start_url", manifest)
+        self.assertNotIn(self.token, data.decode())
         self.assertEqual(self.request("GET", "/assets/icon.png", authorize=False)[0], 401)
 
     def test_reports_version(self):

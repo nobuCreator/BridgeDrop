@@ -49,7 +49,15 @@ ITEM_TTL_SECONDS = 24 * 60 * 60
 FREE_SPACE_MARGIN = 100 * 1024 * 1024
 PROBE_HOST = "captive.apple.com"
 PORTAL_SUCCESS = b"<HTML><HEAD><TITLE>Success</TITLE></HEAD><BODY>Success</BODY></HTML>"
-PUBLIC_ICONS = {"/icon-32.png": "icon-32.png", "/apple-touch-icon.png": "icon-touch.png"}
+PUBLIC_ICONS = {
+    "/icon-32.png": "icon-32.png", "/apple-touch-icon.png": "icon-touch.png",
+    "/icon-192.png": "icon-192.png", "/icon-512.png": "icon-512.png",
+}
+# Android's "add to home screen" takes its icon from here. With no start_url the shortcut keeps the page's own address.
+WEB_MANIFEST = json.dumps({
+    "name": "BridgeDrop", "short_name": "BridgeDrop", "display": "browser",
+    "icons": [{"src": f"/icon-{size}.png", "sizes": f"{size}x{size}", "type": "image/png", "purpose": "any"} for size in (192, 512)],
+}).encode("utf-8")
 PORTAL_PASS_SECONDS = 30
 SAFARI_HOLD_SECONDS = 15 * 60
 PRESENCE_TIMEOUT_SECONDS = 10
@@ -381,6 +389,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.parse()
         if self.route == "/healthz":
             return self.send_body(200, b"bridgedrop", "text/plain")
+        if self.route == "/manifest.webmanifest":
+            return self.send_body(200, WEB_MANIFEST, "application/manifest+json")
         if self.route in PUBLIC_ICONS:
             # Open without the token: phones fetch these on their own when adding the page to the home screen.
             return self.send_body(200, (APP_DIR / "assets" / PUBLIC_ICONS[self.route]).read_bytes(), "image/png")
