@@ -787,9 +787,20 @@ class PortalHandler(http.server.BaseHTTPRequestHandler):
     do_HEAD = do_GET
 
 
-class PortalServer(socketserver.ThreadingMixIn, http.server.HTTPServer):
+class QuickBindServer(socketserver.ThreadingMixIn, http.server.HTTPServer):
+    """HTTPServer looks up this machine's full name while binding, which leaves a Mac unreachable for many seconds."""
+
     daemon_threads = True
+    # Windows would otherwise let a second copy bind the same port silently.
     allow_reuse_address = False
+
+    def server_bind(self):
+        socketserver.TCPServer.server_bind(self)
+        self.server_name, self.server_port = self.server_address[:2]
+
+
+class PortalServer(QuickBindServer):
+    pass
 
 
 class CaptivePortal:
@@ -991,11 +1002,7 @@ class DirectLink:
         self.notify()
 
 
-class Server(socketserver.ThreadingMixIn, http.server.HTTPServer):
-    daemon_threads = True
-    # Windows would otherwise let a second copy bind the same port silently.
-    allow_reuse_address = False
-
+class Server(QuickBindServer):
     def __init__(self, address, store, token, data_dir):
         super().__init__(address, Handler)
         self.store = store

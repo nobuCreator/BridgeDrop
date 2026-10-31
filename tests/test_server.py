@@ -3,7 +3,6 @@ import http.client
 import io
 import json
 import pathlib
-import socket
 import subprocess
 import sys
 import tempfile
@@ -32,12 +31,19 @@ class ServerTest(unittest.TestCase):
         cls.save_dir = base / "save"
         cls.proc = subprocess.Popen([sys.executable, str(ROOT / "bridgedrop.py"), "--no-browser", "--port", str(PORT),
                                      "--data-dir", str(base / "data"), "--save-dir", str(cls.save_dir)])
-        for _ in range(50):
+        started = time.monotonic()
+        cls.startup_seconds = None
+        while time.monotonic() - started < 60:
             try:
-                socket.create_connection(("127.0.0.1", PORT), timeout=0.2).close()
+                # The answer, not just the socket: a bound port can accept connections before the server serves them.
+                probe = http.client.HTTPConnection("127.0.0.1", PORT, timeout=1)
+                probe.request("GET", "/healthz")
+                probe.getresponse().read()
+                probe.close()
+                cls.startup_seconds = time.monotonic() - started
                 break
             except OSError:
-                time.sleep(0.2)
+                time.sleep(0.1)
         cls.token = (base / "data" / "token.txt").read_text().strip()
         cls.lan = free_address()
 
@@ -65,6 +71,16 @@ class ServerTest(unittest.TestCase):
         status, data = self.request("POST", f"/api/upload?{query}", body, host=host)
         self.assertEqual(status, 200, data)
         return json.loads(data)["id"]
+
+    def test_starts_quickly(self):
+        """Looking up the machine's own name once kept a Mac unreachable for over a minute at startup."""
+        self.assertIsNotNone(self.startup_seconds)
+        self.assertLess(self.startup_seconds, 10)
+
+    def test_pairing_answers_quickly(self):
+        started = time.monotonic()
+        self.request("GET", "/api/pairing")
+        self.assertLess(time.monotonic() - started, 5)
 
     def test_page_and_auth(self):
         self.assertEqual(self.request("GET", "/")[0], 200)

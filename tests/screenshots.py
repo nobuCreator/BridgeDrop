@@ -6,7 +6,6 @@ playwright install chromium webkit. Usage: python tests/screenshots.py OUTPUT_FO
 import base64
 import json
 import pathlib
-import socket
 import subprocess
 import sys
 import tempfile
@@ -69,7 +68,7 @@ def main():
         try:
             for _ in range(50):
                 try:
-                    socket.create_connection(("127.0.0.1", PORT), timeout=0.2).close()
+                    urllib.request.urlopen(f"http://127.0.0.1:{PORT}/healthz", timeout=1).read()
                     break
                 except OSError:
                     time.sleep(0.2)
